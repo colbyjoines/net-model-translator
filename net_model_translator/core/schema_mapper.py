@@ -1,16 +1,8 @@
 from pydantic import BaseModel
-from typing import Callable, Dict, Any
+from typing import Dict, Any
 
-class Mapping(BaseModel):
-    source_key: str
-    target_key: str
-    transform: Callable[[Any], Any] = None  # Optional transformation function
+from net_model_translator.core.mapping import Mapping
 
-    def apply(self, data: Dict[str, Any]) -> Any:
-        value = data.get(self.source_key)
-        if self.transform:
-            value = self.transform(value)
-        return self.target_key, value
 
 class SchemaMapper(BaseModel):
     mappings: Dict[str, Mapping]
@@ -21,4 +13,3 @@ class SchemaMapper(BaseModel):
             key, value = mapping.apply(data)
             mapped_data[key] = value
         return mapped_data
-

@@ -1,13 +1,16 @@
-from pydantic import BaseModel
+from netutils.interface import abbreviated_interface_name
 from net_model_translator.core.mapping import Mapping
-from net_model_translator.core.input_schema import InputSchema
+from .schemas import CDPNeighborsInputSchema
 
-class CDPNeighborsInputSchema(InputSchema):
-    hostname: Mapping
-    ip_address: Mapping
-    platform: Mapping
-    local_port: Mapping
-    remote_port: Mapping
-    software_version: Mapping
-    capabilities: Mapping
 
+class CiscoIOS(CDPNeighborsInputSchema):
+    hostname: Mapping = Mapping(source_key="neighbor_name")
+    ip_address: Mapping = Mapping(source_key="mgmt_address")
+    local_port: Mapping = Mapping(
+        source_key="local_interface",
+        transform=abbreviated_interface_name,
+    )
+    remote_port: Mapping = Mapping(
+        source_key="neighbor_interface",
+        transform=abbreviated_interface_name,
+    )

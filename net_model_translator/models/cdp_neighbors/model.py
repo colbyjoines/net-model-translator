@@ -1,9 +1,9 @@
-# models/cdp_neighbors/model.py
-from pydantic import BaseModel
 from typing import Optional
 
+from net_model_translator.core.core_model import CoreModel
 
-class CDPNeighborsModel(BaseModel):
+
+class CDPNeighborsModel(CoreModel):
     hostname: Optional[str]
     ip_address: Optional[str]
     platform: Optional[str]

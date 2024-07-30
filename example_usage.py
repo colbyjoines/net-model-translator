@@ -1,66 +1,102 @@
-import sys
-import os
-
-# Add the project directory to the sys.path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-
-from net_model_translator import Translator, Mapping
-from net_model_translator.schemas.cdp_neighbors.ntc_templates.cisco_ios import (
-    CDPNeighborsInputSchema,
+from net_model_translator.core.model_list import ModelList
+from net_model_translator.core.translator import Translator
+from net_model_translator.input_schemas.cdp_neighbors.ntc_templates import (
+    CiscoIOS,
+    CiscoNXOS,
 )
-from net_model_translator.models.cdp_neighbors.model import CDPNeighborsModel
-from netutils.interface import abbreviated_interface_name
+from net_model_translator.models import mapping
+from net_model_translator.core.core_model import CoreModel
 
-# Define mappings
-cdp_neighbors_input_schema = CDPNeighborsInputSchema(
-    hostname=Mapping(source_key="destination_host", target_key="hostname"),
-    ip_address=Mapping(source_key="management_ip", target_key="ip_address"),
-    local_port=Mapping(
-        source_key="local_port",
-        target_key="local_port",
-        transform=abbreviated_interface_name,
-    ),
-    remote_port=Mapping(
-        source_key="remote_port",
-        target_key="remote_port",
-        transform=abbreviated_interface_name,
-    ),
-    platform=Mapping(source_key="platform", target_key="platform"),
-    software_version=Mapping(
-        source_key="software_version", target_key="software_version"
-    ),
-    capabilities=Mapping(source_key="capabilities", target_key="capabilities"),
-)
 
-# Sample raw data (parsed from device output)
-raw_cdp_data = [
+# Example Pydantic models for NXOS and IOS
+class NXOSCDPNeighborsModel(CoreModel):
+    device_id: str
+    local_interface: str
+    port_id: str
+    platform: str
+    capabilities: str
+    nxos_specific: str
+
+
+class IOSCDPNeighborsModel(CoreModel):
+    hostname: str
+    ip_address: str
+    local_port: str
+    remote_port: str
+    platform: str
+    capabilities: str
+    ios_specific: str
+
+
+# Example raw data for NXOS and IOS
+raw_nxos_data = [
     {
-        "destination_host": "DeviceA",
-        "management_ip": "192.168.1.1",
-        "platform": "Cisco IOS",
-        "local_port": "GigabitEthernet0/1",
-        "remote_port": "GigabitEthernet0/2",
-        "software_version": "15.2(4)M6",
-        "capabilities": "Router Switch",
-    },
-    # Add invalid data for testing
-    {
-        "destination_host": "DeviceB",
-        "management_ip": "192.168.1.2",
-        "platform": "Cisco IOS",
-        # Missing required fields
-    },
+        "neighbor_name": f"NXOS_Device_{i}",
+        "mgmt_address": f"192.168.1.{i}",
+        "local_interface": f"Ethernet{i}/0/{i}",
+        "neighbor_interface": f"Ethernet{i}/0/{i+1}",
+        "port_id": f"Gig{i}/0/{i+1}",
+        "platform": f"Cisco NXOS {i}",
+        "capabilities": "Switch",
+        "neighbor_description": f"NXOS Detail {i}",
+    }
+    for i in range(1, 11)
 ]
 
-# Create a Translator instance for the given device type with custom schema mappers
-translator = Translator(
-    device_type="cisco_ios",
-    input_schema=cdp_neighbors_input_schema,
-    model=CDPNeighborsModel,
+raw_ios_data = [
+    {
+        "neighbor_name": f"IOS_Device_{i}",
+        "mgmt_address": f"192.168.1.{i}",
+        "local_interface": f"Gig{i}/0/{i}",
+        "neighbor_interface": f"Gig{i}/0/{i+1}",
+        "platform": f"Cisco IOS {i}",
+        "capabilities": "Router",
+        "software_version": f"IOS Detail {i}",
+        "ios_specific": f"IOS Specific Field {i}",
+    }
+    for i in range(1, 11)
+]
+
+# Translator usage with schema autodetection
+nxos_translator = Translator(data_type="cdp_neighbors", raw_data=raw_nxos_data)
+ios_translator = Translator(data_type="cdp_neighbors", raw_data=raw_ios_data)
+
+nxos_models = nxos_translator.translate(raw_nxos_data)
+ios_models = ios_translator.translate(raw_ios_data)
+
+# Print the translated models using to_table
+print("NXOS Models:")
+print(nxos_models.to_table())
+
+print("\nIOS Models:")
+print(ios_models.to_table())
+
+# Example usage of Translator with a custom input schema
+custom_ios_translator = Translator(
+    data_type="cisco_ios",
+    model=IOSCDPNeighborsModel,
+    raw_data=raw_ios_data,
+    input_schema=CiscoIOS,
 )
 
-# Translate raw data to Pydantic models
-cdp_models = translator.translate(raw_cdp_data)
+custom_ios_models = custom_ios_translator.translate()
 
-# Output the converted models
-print(cdp_models)
+print("\nCustom IOS Models:")
+print(custom_ios_models.to_table())
+
+# Example usage of calculating average capabilities length
+print(
+    "\nAverage capabilities length in NXOS Models:", nxos_models.average("capabilities")
+)
+print("Average capabilities length in IOS Models:", ios_models.average("capabilities"))
+print(
+    "Average capabilities length in Custom IOS Models:",
+    custom_ios_models.average("capabilities"),
+)
+
+# Demonstrate exporting to JSON and YAML
+print("\nNXOS Models in JSON:")
+print(nxos_models.to_json())
+
+print("\nIOS Models in YAML:")
+print(ios_models.to_yaml())
